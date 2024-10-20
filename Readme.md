@@ -40,3 +40,7 @@ This is a video series on backend with javascript
 ## Read about this server status codes (important)
 
 [Server Status Codes](https://developer.mozilla.org/en-US/docs/Web/HTTP/Status)
+
+## Why and where  to use middlewares and how to use it 
+
+[Excalidraw link for Middlewares](https://excalidraw.com/#json=Hwn2oD7pCo_NZYK9cLm2V,a_vjPx4-r1FJu3idK6z7UA)
