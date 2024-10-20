@@ -32,7 +32,7 @@ connectDB()
 
 
 
-/*  The below commented code is first method to connect with database professionaly for production grade 
+/*  The below  commented code is first method to connect with database professionaly for production grade  within index.js file 
 
 (async()=>{
     try {
