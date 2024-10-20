@@ -5,6 +5,14 @@ dotenv.config({
 })
 
 connectDB()
+.then(()=>{
+    app.listen(process.env.PORT ||8000,() => {
+        console.log(`Server is running at port: ${process.env.PORT}`);
+    })
+}) //Because in this case we import connectDB() from Database.js and in database.js , there is async function so it'll return a promise , and we  handle that promise over here . 
+.catch((error)=>{
+  console.log("MONGO db connection failed !!! ", error);
+})
 
 
 

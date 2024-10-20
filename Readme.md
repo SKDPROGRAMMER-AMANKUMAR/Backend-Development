@@ -32,3 +32,11 @@ This is a video series on backend with javascript
 }
  ````
  
+ ## Link of all about API with Express.js 👇👇
+  [Express API Request(req) and Response(res)](https://expressjs.com/en/5x/api)
+  >>Most of the time you'll only be on Request and Response ['https://expressjs.com/en/5x/api.html']
+>> You've to only use app.use() in case of CORS , middlewares and configuration 
+
+## Read about this server status codes (important)
+
+[Server Status Codes](https://developer.mozilla.org/en-US/docs/Web/HTTP/Status)
