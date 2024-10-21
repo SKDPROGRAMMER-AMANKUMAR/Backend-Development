@@ -1,7 +1,7 @@
 const asyncHandler = (requestHandler) => { /* const asyncHandler = (requestHandler) => {
     >>This line defines a higher-order function named asyncHandler.
     >>It takes a function (requestHandler) as an argument, which is intended to be an asynchronous route handler (e.g., a controller function in an Express route). */
-    (req,res,next) => {/*(req, res, next) => {
+  return   (req,res,next) => {/*(req, res, next) => {
         This returns a new function that takes three parameters:
         req: The request object from the client.
         res: The response object to send data back to the client.
