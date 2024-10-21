@@ -1,5 +1,4 @@
 import { v2 as cloudinary } from 'cloudinary';
-import { log } from 'console';
 import fs from "fs" /*import fs from "fs" imports the File System (fs) module, which is built into Node.js. It allows reading, writing, updating, and deleting files directly from your code.
 
 Example use:
