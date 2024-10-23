@@ -13,7 +13,7 @@ const registerUser = asyncHandler(async (req, res) => {/*
     async (req, res) => {}:
     This function is marked async to allow the use of await for asynchronous operations
     */
-    res.status(200).json({/*res.status(200).json():
+    /*res.status(200).json({res.status(200).json():
         Sends an HTTP response with status 200 (OK) and a JSON object { message: "ok" }.
         This indicates the request was successfully handled. 
         
@@ -21,8 +21,8 @@ const registerUser = asyncHandler(async (req, res) => {/*
         Add logic for user validation and saving to the database.
         Handle errors like duplicate users or invalid input.
         */
-        message: "chai aur code "
-    })
+        // message: "chai aur code "
+    // })
     /*Below is the steps to register the user
     1.get user details from frontend
     2.validation -not empty
@@ -36,7 +36,7 @@ const registerUser = asyncHandler(async (req, res) => {/*
     */
 
     const { fullName, email, username, password } = req.body
-    console.log("email: ", email);/*const { fullName, email, username, password } = req.body;
+    /*console.log("email: ", email);const { fullName, email, username, password } = req.body;
     Destructuring Assignment:
     This line extracts specific properties (fullName, email, username, password) from the req.body object.
     req.body contains the data sent by the client in the body of an HTTP request, typically through a POST or PUT request (e.g., from a form submission).
@@ -60,13 +60,14 @@ const registerUser = asyncHandler(async (req, res) => {/*
   >>Debugging and verifying whether the data is accessible.
   >>Ensuring that the required data (like email and password) is properly received from the client.
     */
+  console.log(req.body); //--.This console is for checking the data that what type of data came , so that we can study it.
     if(
-        [fullName,email,username,password].some((field)=>field?.trim()=== "")
+        [fullName,email,username,password].some((field)=>field?.trim() === "")
     ){
       throw new ApiError(400, "All fields are required")
     }
 
-   const existedUser =  User.findOne({
+   const existedUser = await User.findOne({
         $or: [{ username },{ email }]
     })/*User.findOne(...):
     This is a Mongoose query to search for a single document (user) from the MongoDB collection associated with the User model.
@@ -91,8 +92,11 @@ If a user with the same username or email already exists, the registration might
         throw new ApiError(409, "User with email or username already exists")
     }
 
+    console.log(req.files);
+    
+
     const avatarLocalPath = req.files?.avatar[0]?.path;
-    const coverImageLocalPath = req.files?.coverImage[0]?.path;/*req.files: is an object provided by multer, containing files uploaded through a form.
+    /*const coverImageLocalPath = req.files?.coverImage[0]?.path;req.files: is an object provided by multer, containing files uploaded through a form.
     Each field corresponds to a file (or array of files) uploaded under a specific key (e.g., "avatar" or "coverImage").
 
     Optional Chaining (?.):
@@ -109,6 +113,19 @@ Purpose:
 >>These paths point to where the uploaded files are temporarily stored on the server’s file system.
 >>The paths will typically be used to read, process, or upload the files elsewhere (e.g., uploading them to a cloud storage service like Cloudinary).
      */
+
+ let coverImageLocalPath;
+if(req.files && Array.isArray(req.files.coverImage) && req.files.coverImage.length > 0){
+   coverImageLocalPath = req.files.coverImage[0].path
+}/* 
+This code snippet checks if there is a cover image file uploaded.
+- `let coverImageLocalPath`: Declares a variable to hold the path of the cover image.
+- The `if` condition checks:
+  1. `req.files`: Ensures that the `files` property exists on the request object.
+  2. `Array.isArray(req.files.coverImage)`: Verifies that `coverImage` is an array.
+  3. `req.files.coverImage.length > 0`: Confirms that there is at least one file in the `coverImage` array.
+- If all conditions are true, it assigns the path of the first uploaded cover image to `coverImageLocalPath`.
+*/
 
     if(!avatarLocalPath){
         throw new ApiError(400,"Avatar file is required")
