@@ -356,32 +356,51 @@ const logoutUser = asyncHandler(async(req, res)=>{ /*asyncHandler:
 })
 
 const refreshAccessToken = asyncHandler(async (req, res) => {
-  const incomingRefreshToken =  req.cookies.refreshAccessToken || req.body.refreshAccessToken/*we named it incoming because we've also a refreshToken in our database. */
+  const incomingRefreshToken =  req.cookies.refreshAccessToken || req.body.refreshAccessToken/*we named it incoming because we've also a refreshToken in our database. 
+  
+  req.cookies.refreshAccessToken:  
+  >>This checks if the refresh token is stored in the cookies (common for security reasons).
+  >>Storing tokens in HTTP-only cookies protects them from client-side JavaScript access and Cross-Site Scripting (XSS) attacks.
+
+  req.body.refreshAccessToken:
+  If the token isn’t found in cookies, it tries to retrieve it from the request body.
+  This approach allows flexibility—e.g., when the client sends the token via a POST request payload.
+  */
 
   if(!incomingRefreshToken) {
     throw new ApiError(401, "unauthorized request")
   }
 
   try {
-    const decodedToken = jwt.verify(
-      incomingRefreshToken,
-      process.env.REFRESH_TOKEN_SECRET
+    const decodedToken = jwt.verify(/*jwt.verify():
+      >>This function verifies the JWT (JSON Web Token) using a secret key.
+      >>It checks whether the incomingRefreshToken is valid, has not been tampered with, and is still within its expiry time. */
+      incomingRefreshToken,/*incomingRefreshToken: The token provided by the client, typically from cookies or the request body.*/
+      process.env.REFRESH_TOKEN_SECRET/*process.env.REFRESH_TOKEN_SECRET: The secret key stored in your environment variables. This is used to decode and verify the token’s signature.*/
     )
   
-    const user = await User.findById(decodedToken?._id)
+    const user = await User.findById(decodedToken?._id)/*decodedToken?._id:
+    >>This uses optional chaining (?.) to safely access the _id field from the decodedToken.
+    >>If the decodedToken is undefined or null (perhaps because token verification failed), the expression will return undefined instead of throwing an error.
+    
+    User.findById():
+    >>This method is part of Mongoose, a popular MongoDB object modeling library.
+    >>It looks up a document (user) in the MongoDB collection using the provided _id field.*/
   
     if(!user) {
       throw new ApiError(401, "Invalid refresh token")
     }
   
-    if(incomingRefreshToken !== user?.refreshToken){
+    if(incomingRefreshToken !== user?.refreshToken){/*incomingRefreshToken !== user?.refreshToken:
+      >>Comparing the tokens: It checks if the incomingRefreshToken (sent by the client) matches the stored refreshToken in the user’s database record.
+      >>Optional chaining (?.): Ensures that if user is null or undefined (e.g., the user was not found), it won’t throw an error and instead will return undefined.*/
       throw new ApiError(401,"Refresh token is expired or used")
     }
   
-    const options = {
+    const options = {/*These options are typically applied to authentication cookies, like tokens, to enhance security in production environments. They ensure the cookies are securely transmitted and cannot be accessed by malicious client-side scripts.*/
       httpOnly:true,
       secure:true,
-    }
+    }/*This combination is essential when storing sensitive data (e.g., tokens) on the client for authentication systems using cookies.*/
   
     const {accessToken, newRefreshToken} = await generateAccessAndRefreshTokens(user._id)
   
@@ -403,4 +422,142 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
   }
 })
 
-export { registerUser,loginUser,logoutUser,refreshAccessToken }
+const changeCurrentPassword = asyncHandler(async(req,res)=>{
+  const {oldPassword, newPassword} = req.body/*Extracting Data from the Request Body:
+  >>This line destructures the oldPassword and newPassword properties from the request’s body (req.body).
+  */
+
+  /*if there is one more options like :- (confirmPassword)
+  then you've to like this:-
+  if(!(newPassword === confirmPassword)){
+    throw new error;
+  }
+  */
+
+  const user = await User.findById(req.user?._id)/*The code looks for a user in the database using the user's ID from the req.user object.*/
+  await user.isPasswordCorrect(oldPassword)/*The isPasswordCorrect method compares the provided oldPassword with the stored (hashed) password.
+  
+  This is likely a custom method defined on the user model, which internally:
+  >>Uses a password-hashing library like bcrypt to compare the oldPassword with the hashed password in the database.
+  >>Returns true or false based on the comparison.
+  */
+ if(!isPasswordCorrect) {
+   throw new ApiError(400, "Invalid password")
+ }
+ 
+ user.password = newPassword/*This line replaces the user's current password with the new password from the request body.
+ */
+ await user.save({validateBeforeSave:false})/*The save() method commits changes to the database.
+ >validateBeforeSave: false ensures that Mongoose skips schema validations before saving.
+ 
+ This is useful when you want to avoid validation errors temporarily (e.g., if only some fields are updated, but others may fail schema validation).*/
+
+ return res
+ .status(200)/*This sets the HTTP status code to 200, which indicates a successful request (OK).*/
+ .json(new ApiResponse(200, {} , "Password changed successully"))/*This sends a JSON response to the client.
+ new ApiResponse(200, {}, "Password changed successfully"):
+ 200: Status code indicating success.
+ {}: An empty object representing the data payload (could hold user details or other relevant info if needed).
+ Message: "Password changed successfully" provides feedback to the client about the operation.*/
+})
+
+const getCurrentUser = asyncHandler(async(req,res)=>{
+  return res
+  .status(200)
+  .json(200, req.user, "Current User fetched Successfully")
+})
+
+const updateAccountDetails = asyncHandler(async(req,res)=>{
+  const {fullName, email} = req.body
+
+  if(!(fullName || email)) {
+    throw new ApiError(400, "All fields are required")
+  }
+
+ const user = User.findByIdAndUpdate( req.user?._id,/*User.findByIdAndUpdate():
+  This method finds a user by their _id and updates their information.
+  req.user?._id: Accesses the user's ID from the request object, assuming the user is authenticated and their ID is available.*/
+  {
+    $set:{
+      fullName,//(fullName:fullName)
+      email,//(email:email)
+
+    }/*$set Operator:
+The $set operator is used to update specific fields in the document.
+Here, it updates the fullName and email of the user.
+Shorthand syntax: Since the object key and value are the same (fullName: fullName and email: email), the shorthand fullName and email are used.*/
+  },
+  {new: true}/*{ new: true }:
+  This option ensures that the updated user document is returned (instead of the old one).*/
+ ).select("-password")/*.select("-password"):
+ Excludes the password field from the returned user object for security reasons.*/
+
+ return res
+ .status(200)
+ .json(new ApiResponse(200,user,"Account details updated successfully"))
+
+})
+
+const updateUserAvatar = asyncHandler(async(req,res) => {
+   const avatarLocalPath = req.file?.path/*You can save it directly to the database(MongoDB) without using cloudinary*/
+
+   if(!avatarLocalPath){
+    throw new ApiError(400, "Avatar file is missing")
+   }
+
+   const avatar = await uploadOnCloudinary(avatarLocalPath)
+
+   if(!avatar.url) {
+      throw new ApiError(400, "Error while uploading on avatar")
+   }
+
+   const user = await User.findByIdAndUpdate(
+       req.user?._id,
+       {
+        $set:{
+          avatar:avatar.url
+        }
+       },
+       {new:true}
+   ).select("-password")
+   
+   return res
+   .status(200)
+   .json(
+      new ApiResponse(200,user,"avatar image updated successfully ")
+   )
+})
+
+const updateUserCoverImage = asyncHandler(async(req,res) => {
+   const coverImageLocalPath = req.file?.path/*You can save it directly to the database(MongoDB) without using cloudinary*/
+
+   if(!coverImageLocalPath){
+    throw new ApiError(400, "coverImage file is missing")
+   }
+
+   const coverImage = await uploadOnCloudinary(coverImageLocalPath)
+
+   if(!coverImage.url) {
+      throw new ApiError(400, "Error while uploading on coverImage")
+   }
+
+   const user = await User.findByIdAndUpdate(
+       req.user?._id,
+       {
+        $set:{
+          coverImage:coverImage.url
+        }
+       },
+       {new:true}
+   ).select("-password")
+
+   return res
+   .status(200)
+   .json(
+      new ApiResponse(200,user,"Cover image updated successfully ")
+   )
+})
+
+/*Note:- One advice for production level by Hitesh Sir :- whenever you try to update the file through user, write the controller of it  separetely and endpoints too */
+
+export { registerUser,loginUser,logoutUser,refreshAccessToken,changeCurrentPassword,getCurrentUser,updateAccountDetails, updateUserAvatar,updateUserCoverImage }
